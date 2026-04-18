@@ -59,6 +59,39 @@ graph LR
 - **Smart JSON Merging**: `OpAppend` automatically deep-merges JSON Objects and appends to JSON Arrays.
 - **Real-Time Pub/Sub**: WebSocket fan-out streams committed state changes to subscribed agents instantly.
 - **Native MCP Bridge**: Claude Desktop can read/write the graph out of the box via Model Context Protocol.
+- **Time-Travel Debugger**: Built-in dark-mode web UI for visualizing and debugging your entire agent swarm in real time.
+
+---
+
+## 🕹️ Time-Travel Debugger
+
+Hyperloom ships with a premium developer tool UI for real-time visualization, inspection, and time-travel debugging of your entire multi-agent state graph.
+
+<p align="center">
+  <img src="docs/debugger-screenshot.png" alt="Hyperloom Time-Travel Debugger" width="100%" />
+</p>
+
+### What You Get
+
+| Feature | Description |
+|---|---|
+| **Swarm Graph** | Interactive node tree (React Flow) showing every Trie path. Nodes are color-coded by agent. Committed nodes glow green, staged pulse indigo. |
+| **Ghost Branch Shatter** | When an agent hallucinates and `Revert()` fires, the node flashes red, shakes, and shatters off the graph in real time. |
+| **Time-Travel Slider** | Drag the timeline scrubber backward to replay previous states. Nodes appear and disappear as you scrub through history. |
+| **Node Inspector** | Click any node to open a side panel with the raw JSON `context_diff`, `tx_id`, `agent_id`, operation type, and state hash. |
+| **Live Mode** | The slider auto-advances as events stream in. Hit the green LIVE button to snap back to the present. |
+
+### Quick Start
+
+```bash
+# Terminal 1: Start the Go broker
+go run main.go
+
+# Terminal 2: Start the debugger UI
+cd ui && npm install && npm run dev
+```
+
+Open `http://localhost:5173`. The debugger connects to the broker's `/events` WebSocket and renders the graph in real time. It also ships with a built-in mock data simulator so you can explore the UI without the backend running.
 
 ---
 
