@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0A0A0B;
+  --bg-surface: #161618;
+  --bg-elevated: #1C1C1F;
+  --border: #27272A;
+  --border-bright: #3F3F46;
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+  --accent: #6366F1;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --success: #22C55E;
+  --success-glow: rgba(34, 197, 94, 0.2);
+  --danger: #EF4444;
+  --danger-glow: rgba(239, 68, 68, 0.25);
+  --warning: #F59E0B;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* React Flow overrides for dark mode */
+.react-flow__background {
+  background: var(--bg-primary) !important;
+}
+
+.react-flow__minimap {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls-button {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border) !important;
+  fill: var(--text-secondary) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-surface) !important;
+  fill: var(--text-primary) !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--border-bright) !important;
+  stroke-width: 2 !important;
+}
+
+/* Ghost Branch shatter keyframe */
+@keyframes ghost-shatter {
+  0% { transform: scale(1); opacity: 1; border-color: var(--danger); box-shadow: 0 0 20px var(--danger-glow); }
+  30% { transform: scale(1.05) rotate(1deg); }
+  50% { transform: scale(1.02) rotate(-1deg); }
+  100% { transform: scale(0.7); opacity: 0; filter: blur(4px); }
+}
+
+@keyframes commit-pulse {
+  0% { box-shadow: 0 0 0px var(--success-glow); }
+  50% { box-shadow: 0 0 25px var(--success-glow); }
+  100% { box-shadow: 0 0 0px var(--success-glow); }
+}
+
+@keyframes staged-glow {
+  0% { box-shadow: 0 0 0px var(--accent-glow); }
+  50% { box-shadow: 0 0 15px var(--accent-glow); }
+  100% { box-shadow: 0 0 0px var(--accent-glow); }
+}

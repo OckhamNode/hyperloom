@@ -27,13 +27,17 @@ type PubSubServer struct {
 
 	mu      sync.RWMutex
 	Clients map[*websocket.Conn]string // Conn -> Subscribed Path (e.g. "/agent1")
+
+	debugMu      sync.RWMutex
+	DebugClients map[*websocket.Conn]bool
 }
 
 func NewPubSubServer(s *stream.StreamLog, e *engine.ProcessEngine) *PubSubServer {
 	return &PubSubServer{
-		Stream:  s,
-		Engine:  e,
-		Clients: make(map[*websocket.Conn]string),
+		Stream:       s,
+		Engine:       e,
+		Clients:      make(map[*websocket.Conn]string),
+		DebugClients: make(map[*websocket.Conn]bool),
 	}
 }
 
@@ -115,10 +119,48 @@ func (ps *PubSubServer) Broadcast(path string, node *trie.Node) {
 	}
 }
 
+// HandleDebugEvents connects the Time-Travel Debugger UI via WebSocket.
+func (ps *PubSubServer) HandleDebugEvents(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Debug WS upgrade failed:", err)
+		return
+	}
+
+	ps.debugMu.Lock()
+	ps.DebugClients[conn] = true
+	ps.debugMu.Unlock()
+
+	defer func() {
+		ps.debugMu.Lock()
+		delete(ps.DebugClients, conn)
+		ps.debugMu.Unlock()
+		conn.Close()
+	}()
+
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+	}
+}
+
+// BroadcastDebugEvent fans out a lifecycle event to all debugger UI clients.
+func (ps *PubSubServer) BroadcastDebugEvent(evt DebugEvent) {
+	ps.debugMu.RLock()
+	defer ps.debugMu.RUnlock()
+
+	data, _ := json.Marshal(evt)
+	for conn := range ps.DebugClients {
+		_ = conn.WriteMessage(websocket.TextMessage, data)
+	}
+}
+
 // StartHTTP hooks the endpoints and begins serving.
 func (ps *PubSubServer) StartHTTP(addr string) error {
 	http.HandleFunc("/ingest", ps.HandleIngest)
 	http.HandleFunc("/subscribe", ps.HandleSubscribe)
+	http.HandleFunc("/events", ps.HandleDebugEvents)
 
 	// In a complete system, commits could be via TCP packet or REST. We use REST.
 	http.HandleFunc("/commit", func(w http.ResponseWriter, r *http.Request) {

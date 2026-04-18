@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hyperloom/hyperloom/broker"
+	"github.com/hyperloom/hyperloom/core"
 	"github.com/hyperloom/hyperloom/engine"
 	"github.com/hyperloom/hyperloom/stream"
 	"github.com/hyperloom/hyperloom/trie"
@@ -28,6 +29,18 @@ func main() {
 
 	// Wire the commit trigger to the Broadcast Fan-Out system
 	rollbackEngine.OnCommit = pubsub.Broadcast
+
+	// Wire debug event emitters for the Time-Travel Debugger UI
+	rollbackEngine.OnStage = func(diff core.HyperDiff) {
+		pubsub.BroadcastDebugEvent(broker.NewDebugEvent(
+			broker.EventStaged, diff.AgentID, diff.TxID, diff.Path, string(diff.Operation), diff.Value, "",
+		))
+	}
+	rollbackEngine.OnRevert = func(txID string, agentID string) {
+		pubsub.BroadcastDebugEvent(broker.NewDebugEvent(
+			broker.EventReverted, agentID, txID, "", "", nil, "",
+		))
+	}
 
 	// Start Stream Consumer pointing linearly to the Engine stager
 	ctx := context.Background()

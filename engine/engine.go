@@ -24,8 +24,10 @@ type ProcessEngine struct {
 	Memory    *trie.Trie
 	Timeout   time.Duration
 
-	// PubSub trigger function to fan-out commits
+	// PubSub trigger functions for lifecycle events
 	OnCommit func(path string, node *trie.Node)
+	OnStage  func(diff core.HyperDiff)
+	OnRevert func(txID string, agentID string)
 }
 
 func NewProcessEngine(memory *trie.Trie, timeout time.Duration) *ProcessEngine {
@@ -58,6 +60,11 @@ func (e *ProcessEngine) Stage(diff core.HyperDiff) {
 	e.mu.Lock()
 	tx.Nodes = append(tx.Nodes, node)
 	e.mu.Unlock()
+
+	// 3. Emit debug event
+	if e.OnStage != nil {
+		e.OnStage(diff)
+	}
 }
 
 // Commit finalizes the transaction. Fast, parallel safe.
@@ -98,6 +105,10 @@ func (e *ProcessEngine) Revert(txID string) {
 
 	for _, node := range tx.Nodes {
 		node.Revert(txID)
+	}
+
+	if e.OnRevert != nil {
+		e.OnRevert(txID, tx.AgentID)
 	}
 }
 
