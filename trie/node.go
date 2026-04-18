@@ -1,6 +1,7 @@
 package trie
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -50,6 +51,68 @@ func (n *Node) ApplyShadow(txID string, val json.RawMessage) {
 	n.ShadowValues[txID] = val
 }
 
+// ApplySmartAppend intelligently merges objects or appends to arrays
+func (n *Node) ApplySmartAppend(txID string, val json.RawMessage) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	// Base state is mapped from shadow if exists, otherwise committed value
+	baseState := n.Value
+	if shadow, ok := n.ShadowValues[txID]; ok {
+		baseState = shadow
+	}
+
+	if len(baseState) == 0 || string(baseState) == "null" {
+		n.ShadowValues[txID] = val
+		return
+	}
+
+	baseStr := bytes.TrimSpace(baseState)
+	valStr := bytes.TrimSpace(val)
+
+	// JSON Object Merge
+	if len(baseStr) > 0 && baseStr[0] == '{' && len(valStr) > 0 && valStr[0] == '{' {
+		var baseMap map[string]interface{}
+		var valMap map[string]interface{}
+		if err := json.Unmarshal(baseState, &baseMap); err == nil {
+			if err := json.Unmarshal(val, &valMap); err == nil {
+				for k, v := range valMap {
+					baseMap[k] = v // Overwrite/Merge keys
+				}
+				if merged, err := json.Marshal(baseMap); err == nil {
+					n.ShadowValues[txID] = merged
+					return
+				}
+			}
+		}
+	}
+
+	// JSON Array Append
+	if len(baseStr) > 0 && baseStr[0] == '[' {
+		var baseArr []interface{}
+		if err := json.Unmarshal(baseState, &baseArr); err == nil {
+			if len(valStr) > 0 && valStr[0] == '[' {
+				var valArr []interface{}
+				if err := json.Unmarshal(val, &valArr); err == nil {
+					baseArr = append(baseArr, valArr...)
+				}
+			} else {
+				var singleVal interface{}
+				if err := json.Unmarshal(val, &singleVal); err == nil {
+					baseArr = append(baseArr, singleVal)
+				}
+			}
+			if merged, err := json.Marshal(baseArr); err == nil {
+				n.ShadowValues[txID] = merged
+				return
+			}
+		}
+	}
+
+	// Fallback: Overwrite
+	n.ShadowValues[txID] = val
+}
+
 // Commit elevates a transaction's shadow value to the global state.
 func (n *Node) Commit(txID string) {
 	n.mu.Lock()
@@ -67,6 +130,14 @@ func (n *Node) Revert(txID string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	delete(n.ShadowValues, txID)
+}
+
+// HasShadow safely checks if a transaction is still actively staged on this node.
+func (n *Node) HasShadow(txID string) bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	_, exists := n.ShadowValues[txID]
+	return exists
 }
 
 // GetOrCreateChild ensures a safe concurrent traversal/creation.

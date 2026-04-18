@@ -41,8 +41,10 @@ func (t *Trie) StageDiff(diff core.HyperDiff) *Node {
 
 	// For OpSet we simply overwrite the shadow value.
 	// For OpDel or OpAppend, we'd add complex merge logic, but keeping it lean:
-	if diff.Operation == core.OpSet || diff.Operation == core.OpAppend {
+	if diff.Operation == core.OpSet {
 		target.ApplyShadow(diff.TxID, diff.Value)
+	} else if diff.Operation == core.OpAppend {
+		target.ApplySmartAppend(diff.TxID, diff.Value)
 	} else if diff.Operation == core.OpDel {
 		// A nil/empty raw message designates a tombstone in shadow.
 		target.ApplyShadow(diff.TxID, nil)
