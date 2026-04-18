@@ -19,21 +19,21 @@ When building Multi-Agent systems using traditional databases (Postgres/Redis) o
 
 ```mermaid
 graph TD
-    subgraph Traditional DB [Classic DB: Massive Blocking]
-        DB[JSON Object / Row Lock]
+    subgraph TraditionalDB ["Classic DB: Massive Blocking"]
+        DB["JSON Object Row Lock"]
         AgentA -- "Wait..." --> DB
         AgentB -- "Writing..." --> DB
         AgentC -- "Wait..." --> DB
     end
     
-    subgraph Hyperloom Framework [Hyperloom: Null Blocking]
-        ROOT[/memory]
-        ROOT --> N1[Agent_A Node]
-        ROOT --> N2[Agent_B Node]
-        ROOT --> N3[Agent_C Node]
-        A[Agent A] --> |"Writes freely"|N1 
-        B[Agent B] --> |"Writes freely"|N2
-        C[Agent C] --> |"Reads freely"|N2
+    subgraph HyperloomFramework ["Hyperloom: Null Blocking"]
+        ROOT["memory root"]
+        ROOT --> N1["Agent_A Node"]
+        ROOT --> N2["Agent_B Node"]
+        ROOT --> N3["Agent_C Node"]
+        A["Agent A"] --> |"Writes freely"|N1 
+        B["Agent B"] --> |"Writes freely"|N2
+        C["Agent C"] --> |"Reads freely"|N2
     end
 ```
 
