@@ -12,7 +12,7 @@ import (
 func TestSmartAppend_Array(t *testing.T) {
 	node := NewNode("test")
 	node.Value = json.RawMessage(`[1, 2]`)
-	
+
 	node.ApplySmartAppend("tx1", json.RawMessage(`3`))
 	if string(node.ShadowValues["tx1"]) != `[1,2,3]` && string(node.ShadowValues["tx1"]) != `[1, 2, 3]` {
 		t.Errorf("Expected array merge with 3, got %s", node.ShadowValues["tx1"])
@@ -27,10 +27,10 @@ func TestSmartAppend_Array(t *testing.T) {
 func TestSmartAppend_Object(t *testing.T) {
 	node := NewNode("test")
 	node.Value = json.RawMessage(`{"a": 1}`)
-	
+
 	node.ApplySmartAppend("tx1", json.RawMessage(`{"b": 2}`))
-	
-    val := string(node.ShadowValues["tx1"])
+
+	val := string(node.ShadowValues["tx1"])
 	if val != `{"a":1,"b":2}` && val != `{"b":2,"a":1}` {
 		t.Errorf("Expected merged object, got %s", val)
 	}
@@ -45,19 +45,19 @@ func TestConcurrentStressTrie(t *testing.T) {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
-			diff := core.HyperDiff{
-                AgentID:   "tester",
-                TxID:      fmt.Sprintf("tx_%d", id%500),
-                Path:      fmt.Sprintf("/deep/tree/branch%d/node", id%100),
-                Operation: core.OpSet,
-                Value:     json.RawMessage(`"data"`),
-            }
 
-            // This hits GetOrCreateChild heavily in parallel
+			diff := core.HyperDiff{
+				AgentID:   "tester",
+				TxID:      fmt.Sprintf("tx_%d", id%500),
+				Path:      fmt.Sprintf("/deep/tree/branch%d/node", id%100),
+				Operation: core.OpSet,
+				Value:     json.RawMessage(`"data"`),
+			}
+
+			// This hits GetOrCreateChild heavily in parallel
 			target := tree.StageDiff(diff)
-            
-            // Mix writes and reads
+
+			// Mix writes and reads
 			_ = target.GetCommittedValue()
 
 		}(i)

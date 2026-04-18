@@ -75,7 +75,7 @@ func (e *ProcessEngine) Commit(txID string) {
 
 	for _, node := range tx.Nodes {
 		node.Commit(txID)
-		
+
 		// Inform Pub/Sub system, if bound.
 		if e.OnCommit != nil {
 			e.OnCommit(node.Key, node)

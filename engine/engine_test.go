@@ -37,7 +37,7 @@ func TestEngine_TransactionCommit(t *testing.T) {
 	if string(node.GetCommittedValue()) != `"hello"` {
 		t.Errorf("Value not committed")
 	}
-	
+
 	eng.mu.RLock()
 	_, active := eng.ActiveTxs["tx1"]
 	eng.mu.RUnlock()
@@ -51,15 +51,15 @@ func TestEngine_GarbageCollectionRevert(t *testing.T) {
 	eng := NewProcessEngine(mem, 1*time.Millisecond)
 
 	diff := core.HyperDiff{
-		TxID: "tx2", 
-		Path: "/memory/gc", 
-		Operation: core.OpSet, 
-		Value: json.RawMessage(`"fail"`),
+		TxID:      "tx2",
+		Path:      "/memory/gc",
+		Operation: core.OpSet,
+		Value:     json.RawMessage(`"fail"`),
 	}
 	eng.Stage(diff)
 
 	time.Sleep(5 * time.Millisecond)
-	
+
 	// Simulate GC tick after timeout
 	eng.GarbageCollect()
 
@@ -67,7 +67,7 @@ func TestEngine_GarbageCollectionRevert(t *testing.T) {
 	if len(node.GetCommittedValue()) != 0 {
 		t.Errorf("Should not be committed")
 	}
-	
+
 	// Shadow shouldn't exist anymore
 	if node.HasShadow("tx2") {
 		t.Errorf("Ghost branch was not pruned by GC")

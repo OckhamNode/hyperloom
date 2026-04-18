@@ -2,10 +2,12 @@ package broker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hyperloom/hyperloom/core"
@@ -125,6 +127,42 @@ func (ps *PubSubServer) StartHTTP(addr string) error {
 			ps.Engine.Commit(txID)
 			w.WriteHeader(http.StatusOK)
 		}
+	})
+
+	// Add REST endpoint for MCP direct reads
+	http.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Query().Get("path")
+		if path == "" {
+			path = "/"
+		}
+		node := ps.Engine.Memory.Navigate(path)
+		w.Header().Set("Content-Type", "application/json")
+		val := node.GetCommittedValue()
+		if len(val) == 0 {
+			val = []byte(`null`)
+		}
+		w.Write(val)
+	})
+
+	// Add REST endpoint for MCP synchronous writes
+	http.HandleFunc("/write", func(w http.ResponseWriter, r *http.Request) {
+		var diff core.HyperDiff
+		if err := json.NewDecoder(r.Body).Decode(&diff); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if diff.TxID == "" {
+			diff.TxID = fmt.Sprintf("mcp_tx_%d", time.Now().UnixNano())
+		}
+
+		// Synchronously apply rather than queueing in Stream
+		// because MCP tool calls expect immediate return state.
+		ps.Engine.Stage(diff)
+		ps.Engine.Commit(diff.TxID)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"committed"}`))
 	})
 
 	// Explcit Revert trigger for agents throwing 400 errors.

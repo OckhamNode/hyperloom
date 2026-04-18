@@ -20,7 +20,7 @@ type HyperDiff struct {
 	// TxID bounds a set of patches to a singular atomic transaction which can be rolled back.
 	TxID string `json:"tx_id"`
 
-	// Path is a UNIX-like slash-separated pointer into the global contextual memory. 
+	// Path is a UNIX-like slash-separated pointer into the global contextual memory.
 	// e.g., "/session_84/memory/working/entity_extraction"
 	Path string `json:"path"`
 

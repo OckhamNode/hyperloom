@@ -18,7 +18,7 @@ func NewTrie() *Trie {
 }
 
 // Navigate walks a UNIX-like path (e.g., "agentA/memory/state") and returns the target Node.
-// Because each GetOrCreateChild step uses fine-grained locks sequentially downwards, 
+// Because each GetOrCreateChild step uses fine-grained locks sequentially downwards,
 // agents can traverse different branches completely in parallel safely.
 func (t *Trie) Navigate(path string) *Node {
 	segments := strings.Split(strings.Trim(path, "/"), "/")

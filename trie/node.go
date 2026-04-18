@@ -20,7 +20,7 @@ type Node struct {
 	// Hash represents the deterministic state of this node.
 	Hash string
 
-	// Shadows isolate uncommitted transaction state. Active transactions 
+	// Shadows isolate uncommitted transaction state. Active transactions
 	// can write safely here without affecting the global committed read path.
 	ShadowValues map[string]json.RawMessage
 }
@@ -124,7 +124,7 @@ func (n *Node) Commit(txID string) {
 	}
 }
 
-// Revert instantly discards a transaction's shadow state. The pointer 
+// Revert instantly discards a transaction's shadow state. The pointer
 // remains at the last valid hash automatically.
 func (n *Node) Revert(txID string) {
 	n.mu.Lock()
