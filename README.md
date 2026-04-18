@@ -1,8 +1,18 @@
 <div align="center">
-  <h1>🌌 Hyperloom</h1>
-  <p><b>LLM Cost-Optimization & State Recovery Engine for Multi-Agent Systems</b></p>
-  <br/>
-  <i>Stop paying the Token Tax. Stop restarting crashed pipelines. Ship AI Swarms that are fast, cheap, and resilient.</i>
+
+# 🌌 Hyperloom
+
+**LLM Cost-Optimization & State Recovery Engine for Multi-Agent Systems**
+
+*Stop paying the Token Tax. Stop restarting crashed pipelines. Ship AI swarms that are fast, cheap, and resilient.*
+
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/OckhamNode/hyperloom/test.yml?style=flat-square&label=tests)](https://github.com/OckhamNode/hyperloom/actions)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](Dockerfile)
+
+[Getting Started](#%EF%B8%8F-installation) · [Why Hyperloom](#the-problem-nobody-talks-about) · [MCP Bridge](#-mcp-bridge-for-claude-desktop) · [Debugger](#%EF%B8%8F-time-travel-debugger) · [Benchmarks](#-advanced-tri-matrix-benchmarks) · [Framework Integrations](#-framework-integrations) · [Contributing](#-contributing)
+
 </div>
 
 ---
@@ -54,12 +64,12 @@ graph LR
 
 ## 🚀 Core Features
 
-- **Node-Level Locking**: `sync.RWMutex` on every Trie node. Agent A updating `/session_1/memory` never blocks Agent B writing to `/session_1/intent`. Zero global locks.
-- **Ghost-Branch Rollbacks**: Agents write to invisible "shadow branches." If an agent hallucinates, `Revert()` drops the branch in nanoseconds. You retry **only the failed agent**, not the whole pipeline.
-- **Smart JSON Merging**: `OpAppend` automatically deep-merges JSON Objects and appends to JSON Arrays.
-- **Real-Time Pub/Sub**: WebSocket fan-out streams committed state changes to subscribed agents instantly.
-- **Native MCP Bridge**: Claude Desktop can read/write the graph out of the box via Model Context Protocol.
-- **Time-Travel Debugger**: Built-in dark-mode web UI for visualizing and debugging your entire agent swarm in real time.
+- **Node-Level Locking** — `sync.RWMutex` on every Trie node. Agent A updating `/session_1/memory` never blocks Agent B writing to `/session_1/intent`. Zero global locks.
+- **Ghost-Branch Rollbacks** — Agents write to invisible "shadow branches." If an agent hallucinates, `Revert()` drops the branch in nanoseconds. You retry **only the failed agent**, not the whole pipeline.
+- **Smart JSON Merging** — `OpAppend` automatically deep-merges JSON Objects and appends to JSON Arrays.
+- **Real-Time Pub/Sub** — WebSocket fan-out streams committed state changes to subscribed agents instantly.
+- **Native MCP Bridge** — Claude Desktop can read/write the graph out of the box via Model Context Protocol.
+- **Time-Travel Debugger** — Built-in dark-mode web UI for visualizing and debugging your entire agent swarm in real time.
 
 ---
 
@@ -71,17 +81,13 @@ Hyperloom ships with a premium developer tool UI for real-time visualization, in
   <img src="docs/debugger-screenshot.png" alt="Hyperloom Time-Travel Debugger" width="100%" />
 </p>
 
-### What You Get
-
 | Feature | Description |
 |---|---|
-| **Swarm Graph** | Interactive node tree (React Flow) showing every Trie path. Nodes are color-coded by agent. Committed nodes glow green, staged pulse indigo. |
-| **Ghost Branch Shatter** | When an agent hallucinates and `Revert()` fires, the node flashes red, shakes, and shatters off the graph in real time. |
-| **Time-Travel Slider** | Drag the timeline scrubber backward to replay previous states. Nodes appear and disappear as you scrub through history. |
-| **Node Inspector** | Click any node to open a side panel with the raw JSON `context_diff`, `tx_id`, `agent_id`, operation type, and state hash. |
-| **Live Mode** | The slider auto-advances as events stream in. Hit the green LIVE button to snap back to the present. |
-
-### Quick Start
+| **Swarm Graph** | Interactive node tree (React Flow). Nodes are color-coded by agent. Committed nodes glow green, staged pulse indigo. |
+| **Ghost Branch Shatter** | When `Revert()` fires, the node flashes red, shakes, and shatters off the graph in real time. |
+| **Time-Travel Slider** | Drag the timeline backward to replay previous states. Nodes appear/disappear as you scrub. |
+| **Node Inspector** | Click any node to see the raw JSON `context_diff`, `tx_id`, `agent_id`, and state hash. |
+| **Live Mode** | Auto-advances as events stream in. Hit the green LIVE button to snap back to the present. |
 
 ```bash
 # Terminal 1: Start the Go broker
@@ -91,7 +97,7 @@ go run main.go
 cd ui && npm install && npm run dev
 ```
 
-Open `http://localhost:5173`. The debugger connects to the broker's `/events` WebSocket and renders the graph in real time. It also ships with a built-in mock data simulator so you can explore the UI without the backend running.
+Open `http://localhost:5173`. Ships with a built-in mock simulator — no backend needed to explore the UI.
 
 ---
 
@@ -110,7 +116,6 @@ Instead of serializing a massive context blob and passing 100k tokens to every a
 * **Impact:** Reduces input token volume by 80–95%, directly cutting OpenAI/Anthropic/Bedrock bills.
 
 ### 3. Infrastructure Consolidation
-Hyperloom replaces the need for:
 | Traditional Stack | Hyperloom Equivalent |
 |---|---|
 | Redis (context cache) | In-memory Trie with node-level locks |
@@ -148,6 +153,7 @@ cd hyperloom
 go build -o hyperloom .
 ./hyperloom
 ```
+
 The broker starts on `ws://localhost:8080`.
 
 ---
@@ -181,7 +187,6 @@ import requests
 
 tx_id = "crew_tx_worker_8"
 
-# Agent writes only its diff — not the entire context
 requests.post("http://localhost:8080/write", json={
     "tx_id": tx_id,
     "path": "/crewai/project_vulcan/security_scan",
@@ -189,7 +194,6 @@ requests.post("http://localhost:8080/write", json={
     "value": '["Scanned 142 endpoints. 3 vulnerabilities found."]'
 })
 
-# Verified clean — commit to global graph
 requests.get(f"http://localhost:8080/commit?tx_id={tx_id}")
 ```
 
@@ -197,17 +201,11 @@ requests.get(f"http://localhost:8080/commit?tx_id={tx_id}")
 ```javascript
 const WebSocket = require('ws');
 
-// Supervisor listens ONLY to its team's sub-tree
 const ws = new WebSocket('ws://localhost:8080/subscribe?path=/autogen/team_1');
 
 ws.on('message', (data) => {
   const update = JSON.parse(data);
   console.log(`[Supervisor] Agent updated ${update.path}:`, update.value);
-  
-  // React to worker outputs in real-time
-  if (update.path.includes('error')) {
-    console.log('Triggering rollback for failed agent...');
-  }
 });
 ```
 
@@ -217,7 +215,6 @@ import requests, json
 
 tx_id = "langchain_tx_42"
 
-# Agent writes speculatively to a Ghost Branch
 requests.post("http://localhost:8080/write", json={
     "tx_id": tx_id,
     "path": "/langchain/chain_output",
@@ -225,11 +222,9 @@ requests.post("http://localhost:8080/write", json={
     "value": json.dumps(llm_response)
 })
 
-# Validate before committing
 if not is_valid_output(llm_response):
-    # Instantly prune the ghost branch — zero cost
     requests.get(f"http://localhost:8080/revert?tx_id={tx_id}")
-    print("Hallucination caught. Ghost branch pruned. Retrying agent only.")
+    print("Hallucination caught. Ghost branch pruned.")
 else:
     requests.get(f"http://localhost:8080/commit?tx_id={tx_id}")
 ```
@@ -283,6 +278,25 @@ The test suite includes:
 - **Transaction commit/revert isolation** verification
 - **Smart JSON merge** (array append + object deep-merge) correctness
 - **Garbage collector** timeout-based automatic rollback
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read the [issues](https://github.com/OckhamNode/hyperloom/issues) page for open work items. For major changes, please open an issue first to discuss what you would like to change.
+
+```bash
+git clone https://github.com/OckhamNode/hyperloom.git
+cd hyperloom
+go test -v ./...      # Run backend tests
+cd ui && npm run dev   # Run debugger UI
+```
+
+---
+
+## 📝 License
+
+MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
