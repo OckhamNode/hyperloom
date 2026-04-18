@@ -1,0 +1,6 @@
+.git
+.github
+cmd/simulate
+cmd/benchmark
+*.md
+*.exe

@@ -101,6 +101,14 @@ Hyperloom replaces the need for:
 
 ## 🛠️ Installation
 
+### Option A: Docker (Recommended)
+```bash
+docker build -t hyperloom .
+docker run -p 8080:8080 hyperloom
+```
+One command. ~15MB image. Zero dependencies on the host.
+
+### Option B: Build from Source
 ```bash
 git clone https://github.com/OckhamNode/hyperloom.git
 cd hyperloom
