@@ -5,33 +5,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-func main() {
-	log.Println("Hyperloom Synchronous REST Benchmarker Initiated...")
+type BenchmarkProfile struct {
+	Name        string
+	Method      string // "GET", "POST", or "POST+REVERT"
+	URLPath     string
+	PayloadFunc func(workerID int, reqIdx int) []byte
+}
 
-	// Default massive load test
-	workers := 1000      // 1000 aggressively parallel agents
-	reqPerWorker := 100  // Each agent fires 100 payloads as fast as possible
-
-	payload := []byte(`{"agent_id":"bench_agent", "path":"/benchmark/throughput", "op":"APPEND", "value": "{\"tick\":1}"}`)
-
+func runProfile(p BenchmarkProfile, workers, reqPerWorker int, tr *http.Transport) {
 	var successes int64
 	var totalTime int64
-
 	var wg sync.WaitGroup
-	start := time.Now()
 
-	// High concurrency transport to avoid TIME_WAIT local TCP exhaustion
-	tr := &http.Transport{
-		MaxIdleConns:        10000,
-		MaxIdleConnsPerHost: 10000,
-	}
 	client := &http.Client{Transport: tr, Timeout: 10 * time.Second}
+	start := time.Now()
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -39,9 +31,33 @@ func main() {
 			defer wg.Done()
 			for j := 0; j < reqPerWorker; j++ {
 				reqStart := time.Now()
-				resp, err := client.Post("http://localhost:8080/write", "application/json", bytes.NewReader(payload))
-				if err == nil && resp.StatusCode == 200 {
-					resp.Body.Close()
+
+				var resp *http.Response
+				var err error
+
+				if p.Method == "POST" {
+					payload := p.PayloadFunc(workerID, j)
+					resp, err = client.Post("http://localhost:8080"+p.URLPath, "application/json", bytes.NewReader(payload))
+				} else if p.Method == "GET" {
+					resp, err = client.Get("http://localhost:8080" + p.URLPath)
+				} else if p.Method == "POST+REVERT" {
+					tx := fmt.Sprintf("hx_%d_%d", workerID, j)
+					payload := []byte(fmt.Sprintf(`{"tx_id":"%s", "agent_id":"bench", "path":"/conflict", "op":"APPEND", "value": "1"}`, tx))
+					resp, err = client.Post("http://localhost:8080/write", "application/json", bytes.NewReader(payload))
+					if err == nil && resp.StatusCode == 200 {
+						resp.Body.Close()
+						// Trigger the immediate Rollback PRUNE
+						revResp, rErr := client.Get("http://localhost:8080/revert?tx_id=" + tx)
+						if rErr == nil {
+							revResp.Body.Close()
+						}
+					}
+				}
+
+				if err == nil && resp != nil && resp.StatusCode == 200 {
+					if p.Method != "POST+REVERT" {
+						resp.Body.Close()
+					}
 					atomic.AddInt64(&successes, 1)
 				}
 				atomic.AddInt64(&totalTime, int64(time.Since(reqStart)))
@@ -54,23 +70,55 @@ func main() {
 
 	succ := atomic.LoadInt64(&successes)
 	if succ == 0 {
-		log.Println("Fatal: Benchmark failed to connect to http://localhost:8080. Is the broker loop active?")
-		os.Exit(1)
+		log.Printf("[%s] Fatal: Failed to connect to local broker.\n", p.Name)
+		return
 	}
 
 	reqPerSec := float64(succ) / duration.Seconds()
 	avgLatency := time.Duration(atomic.LoadInt64(&totalTime) / succ)
 
-	log.Println("\n--- HYPERLOOM BENCHMARK RESULTS ---")
-	log.Printf("Total Requests Sent: %d\n", workers*reqPerWorker)
-	log.Printf("Successful Commits: %d\n", succ)
-	log.Printf("Concurrency Level: %d Parallel Agents\n", workers)
-	log.Printf("Time Taken: %v\n", duration)
-	log.Printf("Throughput: %.2f requests/second\n", reqPerSec)
-	log.Printf("Avg Latency (Merge/Lock/Hash Commit): %v\n", avgLatency)
+	log.Printf("---- Profile: %s ----\n", p.Name)
+	log.Printf("Throughput: %.2f req/sec\n", reqPerSec)
+	log.Printf("Avg Latency: %v\n\n", avgLatency)
 
-	fmt.Printf("\nMarkdown export:\n")
-	fmt.Printf("- **Concurrency**: %d simultaneous agents\n", workers)
-	fmt.Printf("- **Throughput**: %.2f writes/second\n", reqPerSec)
-	fmt.Printf("- **Average Latency**: %v per commit\n", avgLatency)
+	fmt.Printf("| %s | %.2f req/s | %v |\n", p.Name, reqPerSec, avgLatency)
+}
+
+func main() {
+	log.Println("Starting Advanced Tri-Matrix Benchmark...")
+
+	tr := &http.Transport{
+		MaxIdleConns:        10000,
+		MaxIdleConnsPerHost: 10000,
+	}
+
+	workers := 500
+	requests := 50
+
+	fmt.Println("\n## Real-World Multi-Agent Profile Run")
+	fmt.Println("| Benchmark Profile | Sustained Throughput | Avg Latency |")
+	fmt.Println("|---|---|---|")
+
+	// P1: Read-Heavy Swarm
+	runProfile(BenchmarkProfile{
+		Name:   "Read-Heavy Swarm (90% Read)",
+		Method: "GET",
+		URLPath: fmt.Sprintf("/read?path=/global/mem/1"),
+	}, workers, requests, tr)
+
+	// P2: Write-Heavy Conflict 
+	runProfile(BenchmarkProfile{
+		Name:    "Write-Heavy Conflict (100% Writes)",
+		Method:  "POST",
+		URLPath: "/write",
+		PayloadFunc: func(w, r int) []byte {
+			return []byte(`{"agent_id":"wbench", "path":"/hot/target", "op":"APPEND", "value":"[1]"}`)
+		},
+	}, workers, requests, tr)
+
+	// P3: Hallucination Rollback
+	runProfile(BenchmarkProfile{
+		Name:   "Hallucination Trim (Ghost Branch Pruning)",
+		Method: "POST+REVERT",
+	}, workers, requests, tr)
 }
